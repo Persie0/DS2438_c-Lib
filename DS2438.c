@@ -48,7 +48,7 @@ int init_Onewire(void) {
     Onewire_Out=0; // Drives DQ low
     wait_10us(50);
     Onewire_Out=1; // Releases the bus
-    wait_10us(70);
+    wait_10us(7);
     if(!Onewire_In)// Sample for presence low pulse from slave
         result=1;
     else
@@ -69,9 +69,69 @@ void wait_ms(int ms){	//wait for time (ms) that gets passed as argument
 }
 
 int main(void) {
-    int initSuccessful=0;
+    uart1_init();
+	
     init_OnewirePorts();
-    initSuccessful=init_Onewire();
+
+    if(init_Onewire())
+    {
+        uart_put_string("Init suc\\n\\r");
+
+    }
+    else
+        uart_put_string("Init failed");
+}
 
 
+
+
+
+
+
+void uart1_init(void)
+{
+    RCC->APB2ENR |= 0x4; //GPIOA mit einem Takt versorgen
+
+    GPIOA->CRH &= 0xFFFFFF0F;     // reset  PA.9 configuration-bits
+    GPIOA->CRH |= 0xB0;           //Tx (PA9) - alt. out push-pull
+
+    GPIOA->CRH &= 0xFFFFF0FF;     //reset PA.10 configuration-bits
+    GPIOA->CRH |= 0x400;          //Rx (PA10) - floating
+
+    RCC->APB2ENR |= 0x4000;       //USART1 mit einem Takt versrogen
+
+    USART1->CR1 &= ~0x1000;       // M: Word length:0 --> Start bit, 8 Data bits, n Stop bit
+    USART1->CR1 &= ~0x0400;       // PCE (Parity control enable):0 --> No Parity
+
+    USART1->CR2 &= ~0x3000;       // STOP:00 --> 1 Stop bit
+
+    USART1->BRR  = 0x1D4C;        // set Baudrate to 9600 Baud (SysClk 72Mhz)
+
+    USART1->CR1 |= 0x0C;          // enable  Receiver and Transmitter
+    USART1->CR1 |= 0x2000;        // Set USART Enable Bit
+}
+
+
+
+
+
+void uart_put_char(char zeichen)
+{
+    while (!(USART1->SR & 0x80)); //warten, bis die letzten Daten gesendet wurden
+    USART1->DR = zeichen;				//Daten in Senderegister schreiben
+}
+
+/**
+  *****************************************************************************
+  * @brief Sends one '\0' terminated String  via USART1
+  *
+  * @param  string - pointer to '0' terminated String (C convention)
+  * @retval none
+  *****************************************************************************
+  */
+void uart_put_string(char *string)
+{
+    while (*string)  {
+        uart_put_char (*string++);
+    }
 }

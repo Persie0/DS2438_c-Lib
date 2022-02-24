@@ -320,7 +320,7 @@ int OneWire_ReadByte()
         // shift the result to get it ready for the next bit
         result >>= 1;
 
-        // if result is one, then set MS bit
+        // if result is one, then set MS bit (first set Bit gets shifted to LSB)
         if (OneWire_ReadBit())
             result |= 0x80;
     }
@@ -331,9 +331,9 @@ int OneWire_ReadBit()
 {
     int result;
     Onewire_Out=0; // Drives DQ low
-    wait_us(5); // Complete the Read Low Time
+    wait_us(4); // Complete the Read Low Time
     Onewire_Out=1; // Releases the bus
-    wait_us(4);//be sure Onewire_Out is 1 but be still in the Read Data Valid time window
+    wait_us(4);//be sure Onewire_Out is 1 but to be still in the Read Data Valid time window
     result = Onewire_In // Sample the bit value from the slave
     wait_10us(6); // Complete the Time Slot time and Recovery Time
 

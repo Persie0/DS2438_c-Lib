@@ -586,7 +586,7 @@ Memory Map of the image
     0x0800042c   0x0800042c   0x000000e0   Code   RO          111    i.SetSysClockTo72   system_stm32f10x.o
     0x0800050c   0x0800050c   0x00000060   Code   RO          113    i.SystemInit        system_stm32f10x.o
     0x0800056c   0x0800056c   0x00000038   Code   RO            4    i.init_Onewire      ds2438.o
-    0x080005a4   0x080005a4   0x00000024   Code   RO            5    i.init_OnewirePorts  ds2438.o
+    0x080005a4   0x080005a4   0x00000024   Code   RO            5    i.init_OnewirePort  ds2438.o
     0x080005c8   0x080005c8   0x00000054   Code   RO            6    i.main              ds2438.o
     0x0800061c   0x0800061c   0x00000094   Code   RO            7    i.uart1_init        ds2438.o
     0x080006b0   0x080006b0   0x0000001c   Code   RO            8    i.uart_put_char     ds2438.o

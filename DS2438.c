@@ -31,6 +31,7 @@ void OneWire_WriteByte(int data);
 int OneWire_ReadBit();
 int OneWire_ReadByte();
 int DS2438_IsDevicePresent(void);
+void OneWire_WriteBit(int bit);
 
 /*----------------------------- Define Pins for Onewire--------------*/
 #define GPIOA_IDR GPIOA_BASE + 2*sizeof(uint32_t)    // Calc peripheral address GPIOA IDR
@@ -48,29 +49,29 @@ int DS2438_IsDevicePresent(void);
 // ===========================================================
 
 /**
-*   \brief No error generated.
-*/
-#define DS2438_OK               0
-
-/**
 *   \brief Device was not found on the 1-Wire interface.
 */
-#define DS2438_DEV_NOT_FOUND    1
+#define DS2438_DEV_NOT_FOUND    0
 
 /**
 *   \brief CRC Check failed.
 */
-#define DS2438_CRC_FAIL         2
+#define DS2438_CRC_FAIL         0
 
 /**
-*   \brief Generic error.
+*   \brief Operation finished unsuccessfully.
 */
-#define DS2438_ERROR            3
+#define DS2438_ERROR            0
 
 /**
 *   \brief Bad parameter error.
 */
-#define DS2438_BAD_PARAM        4
+#define DS2438_BAD_PARAM        0
+
+/**
+*   \brief Operation was successful
+*/
+#define DS2438_OP_SUCCESS   1
 
 // ===========================================================
 //                      1-WIRE COMMANDS
@@ -180,24 +181,23 @@ int reset_Onewire(void) {
 int DS2438_IsDevicePresent(void)
 {
     // check if device is present on the bus
-        return reset_Onewire() == DS2438_OK;
+        return reset_Onewire() == 0;
 }
 
 int DS2438_EnableIAD(void)// Enable current measurements and ICA
 {
     int page_data[9];
-    int feedback = DS2438_ReadPage(0x00, page_data); //read Page 0
     //Enable Current A/D Control Bit (Set bit 0 in byte 0 of page 0)
-    if (feedback == DS2438_OK)
+    if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // set bit 0
         page_data[0] = page_data[0] | 0x01;
-        return DS2438_WritePage(0x00, page_data);
+        return DS2438_WritePage(0x00, page_data);//write Page 0 successful?
     }
-    return feedback;
+    return DS2438_ERROR;
 }
 
-// Read one page of data
+// Read one page of data, cbv - return page data
 int DS2438_ReadPage(int page_number, int* page_data)
 {
     if (page_number > 0x07)//there are only pages from 0x00 to 0x07
@@ -210,37 +210,36 @@ int DS2438_ReadPage(int page_number, int* page_data)
             OneWire_WriteByte(DS2438_SKIP_ROM);
             // Recall memory command
             OneWire_WriteByte(DS2438_RECALL_MEMORY);
-            // Page number
-            OneWire_WriteByte(page_number);
+            OneWire_WriteByte(page_number);//page number from which to recall memory
             if (DS2438_IsDevicePresent())// Reset sequence
             {
                 // Skip ROM command 
                 OneWire_WriteByte(DS2438_SKIP_ROM);
                 // Read scratchpad command
                 OneWire_WriteByte(DS2438_READ_SCRATCHPAD);
-                // Page 0
+                //  which scratchpad page number to read from
                 OneWire_WriteByte(page_number);
                 // Read nine bytes
-                for (int i = 0; i < 9; i++)
+                for (int i = 0; i < 9; i++) //eight 8-byte pages, 9th byte contains a cyclic redundancy check (CRC) byte
                 {
                     page_data[i] = OneWire_ReadByte();
                 }
-                return OK;
+                return DS2438_OP_SUCCESS;
             }
         }
     }
-    return DEV_NOT_FOUND;
+    return DS2438_DEV_NOT_FOUND;
 }
 
 // Write one page of data
 int DS2438_WritePage(int page_number, int * page_data)
 {
     if (page_number > 0x07)//there are only pages 0x00 to 0x07
-        return 0;
+        return DS2438_BAD_PARAM;
     else
     {
         // Reset sequence
-        if (reset_Onewire() == 1)
+        if (DS2438_IsDevicePresent())
         {
             // Skip ROM command [CCh]
             OneWire_WriteByte(DS2438_SKIP_ROM);
@@ -252,19 +251,19 @@ int DS2438_WritePage(int page_number, int * page_data)
             {
                 OneWire_WriteByte(page_data[i]);
             }
-            if (reset_Onewire() == 0)
+            if (DS2438_IsDevicePresent())
             {
                 // Skip ROM command 
-                OneWire_WriteByte(Pin_0, SKIP_ROM);
+                OneWire_WriteByte(SKIP_ROM);
                 // Copy scratchpad command
-                OneWire_WriteByte(Pin_0, COPY_SCRATCHPAD);
+                OneWire_WriteByte(COPY_SCRATCHPAD);
                 // Write page number
-                OneWire_WriteByte(Pin_0, page_number);
-                return OK;
+                OneWire_WriteByte(page_number);
+                return DS2438_OP_SUCCESS;
             }
         }
     }
-    return DEV_NOT_FOUND;
+    return DS2438_DEV_NOT_FOUND;
 }
 
 void OneWire_WriteByte(int data)

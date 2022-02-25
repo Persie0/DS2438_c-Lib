@@ -30,6 +30,7 @@ void wait_us(int factor);
 void OneWire_WriteByte(int data);
 int OneWire_ReadBit();
 int OneWire_ReadByte();
+int DS2438_IsDevicePresent(void);
 
 /*----------------------------- Define Pins for Onewire--------------*/
 #define GPIOA_IDR GPIOA_BASE + 2*sizeof(uint32_t)    // Calc peripheral address GPIOA IDR
@@ -133,7 +134,7 @@ int main(void) {
 
     init_OnewirePort();
 
-    if(reset_Onewire())
+    if(DS2438_IsDevicePresent())
     {
         uart_put_string("Init successfull\\n\\r");
 
@@ -171,25 +172,15 @@ int reset_Onewire(void) {
     wait_10us(50);
     Onewire_Out=1; // Releases the bus
     wait_10us(7);
-    // Sample for presence low pulse from slave
-    if(!Onewire_In)//low pulse from slave detected
-        result=1;
-    else
-        result=0;//no low pulse from slave detected
-    return result;
+
+    return Onewire_In; //0 if low pulse from slave detected, 1 if not
 }
 
+//returns 1 if device is ok
 int DS2438_IsDevicePresent(void)
 {
     // check if device is present on the bus
-    if (reset_Onewire() == 0)
-    {
-        return DS2438_OK;
-    }
-    else
-    {
-        return DS2438_DEV_NOT_FOUND;
-    }
+        return reset_Onewire() == DS2438_OK;
 }
 
 int DS2438_EnableIAD(void)// Enable current measurements and ICA
@@ -213,23 +204,22 @@ int DS2438_ReadPage(int page_number, int* page_data)
         return DS2438_BAD_PARAM;
     else
     {
-        // Reset sequence
-        if (reset_Onewire() == 0)
+        if (DS2438_IsDevicePresent())// Reset sequence
         {
-            // Skip ROM command [CCh]
+            // Skip ROM command
             OneWire_WriteByte(DS2438_SKIP_ROM);
             // Recall memory command
             OneWire_WriteByte(DS2438_RECALL_MEMORY);
             // Page number
             OneWire_WriteByte(page_number);
-            if (reset_Onewire(Pin_0) == 0)
+            if (DS2438_IsDevicePresent())// Reset sequence
             {
                 // Skip ROM command 
-                OneWire_WriteByte(Pin_0, DS2438_SKIP_ROM);
+                OneWire_WriteByte(DS2438_SKIP_ROM);
                 // Read scratchpad command
-                OneWire_WriteByte(Pin_0, DS2438_READ_SCRATCHPAD);
+                OneWire_WriteByte(DS2438_READ_SCRATCHPAD);
                 // Page 0
-                OneWire_WriteByte(Pin_0, page_number);
+                OneWire_WriteByte(page_number);
                 // Read nine bytes
                 for (int i = 0; i < 9; i++)
                 {
@@ -260,9 +250,9 @@ int DS2438_WritePage(int page_number, int * page_data)
             OneWire_WriteByte(page_number);
             for (int i = 0; i < 9; i++)
             {
-                OneWire_WriteByte(Pin_0, page_data[i]);
+                OneWire_WriteByte(page_data[i]);
             }
-            if (reset_Onewire(Pin_0) == 0)
+            if (reset_Onewire() == 0)
             {
                 // Skip ROM command 
                 OneWire_WriteByte(Pin_0, SKIP_ROM);
@@ -279,10 +269,10 @@ int DS2438_WritePage(int page_number, int * page_data)
 
 void OneWire_WriteByte(int data)
 {
-    int loop;
+    int bit;
 
     // Loop to write each bit in the byte, LS-bit first
-    for (loop = 0; loop < 8; loop++)
+    for (bit = 0; bit < 8; bit++)
     {
         OneWire_WriteBit(data & 0x01);
 
@@ -314,8 +304,8 @@ void OneWire_WriteBit(int bit)
 
 int OneWire_ReadByte()
 {
-    int loop, result=0;
-    for (loop = 0; loop < 8; loop++)
+    int bit, result=0x0;
+    for (bit = 0; bit < 8; bit++)
     {
         // shift the result to get it ready for the next bit
         result >>= 1;

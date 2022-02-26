@@ -18,10 +18,10 @@ void uart1_init(void);
 void uart_put_char(char ch);
 void uart_put_string(char *string);
 
-
+void uart_put_page_content(int page_data[]);
+void uart_put_string_newline(char *string);
 int reset_Onewire(void);
 void init_OnewirePort(void);
-void wait_ms(int ms);
 void wait_10us(int mal);
 int enableIAD(void);
 int DS2438_ReadPage(int page_number, int* page_data);
@@ -137,11 +137,11 @@ int main(void) {
 
     if(DS2438_IsDevicePresent())
     {
-        uart_put_string("Init successfull\\n\\r");
+        uart_put_string_newline("Device present");
 
     }
     else
-        uart_put_string("Init failed");
+        uart_put_string_newline("no Device found");
 }
 
 void wait_10us(int factor){	//wait for 10us multiplied by the value that gets passed as argument
@@ -154,6 +154,17 @@ void wait_us(int factor){	//wait for 1us multiplied by the value that gets passe
     int j;
     for(j = 0; j < 8*factor; j++) {
     }
+}
+
+void uart_put_page_content(int page_data[])
+{
+    char msg[50];
+    sprintf(msg, "%d %d %d %d %d %d %d %d", page_data[0], page_data[1],
+            page_data[2], page_data[3],
+            page_data[4], page_data[5],
+            page_data[6], page_data[7]);
+    uart_put_string("Current page content (MSB to LSB): ");
+    uart_put_string_newline(msg);
 }
 
 void init_OnewirePort(void) {
@@ -216,7 +227,7 @@ int DS2438_EnableCA(void)
     int page_data[9];
     if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
     {
-        // set bit 0
+        // set bit 1
         page_data[0] = page_data[0] | 0x02;
         return DS2438_WritePage(0x00, page_data);
     }
@@ -230,7 +241,8 @@ int DS2438_DisableCA(void)
     int page_data[9];
     if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
     {
-        page_data[0] = page_data[0] & (~0x02);// Clear bit 1
+        // Clear bit 1
+        page_data[0] = page_data[0] & (~0x02);
         return DS2438_WritePage(0x00, page_data);//write current Byte 0 with bit 1 cleared
     }
     return DS2438_ERROR;
@@ -420,4 +432,13 @@ void uart_put_string(char *string)
     while (*string)  {
         uart_put_char (*string++);
     }
+}
+
+void uart_put_string_newline(char *string)
+{
+    while (*string)  {
+        uart_put_char (*string++);
+    }
+    uart_put_char ('\r');
+    uart_put_char ('\n');
 }

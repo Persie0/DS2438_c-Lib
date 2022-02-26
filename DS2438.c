@@ -187,12 +187,51 @@ int DS2438_IsDevicePresent(void)
 int DS2438_EnableIAD(void)// Enable current measurements and ICA
 {
     int page_data[9];
-    //Enable Current A/D Control Bit (Set bit 0 in byte 0 of page 0)
+    //Enable Current A/D Control Bit (Set bit 0 in byte/page 0 of page 0)
     if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // set bit 0
         page_data[0] = page_data[0] | 0x01;
         return DS2438_WritePage(0x00, page_data);//write Page 0 successful?
+    }
+    return DS2438_ERROR;
+}
+
+int DS2438_DisableIAD(void)// Disable current measurements and ICA
+{
+    // Clear bit 0 in byte/page 0 of page 0
+    int page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
+    {
+        // Clear bit 0
+        page_data[0] = page_data[0] & (~0x01);
+        return DS2438_WritePage(0x00, page_data);
+    }
+    return DS2438_ERROR;
+}
+
+int DS2438_EnableCA(void)
+{
+    // Set bit 1 in byte/page 0 of page 0
+    int page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
+    {
+        // set bit 0
+        page_data[0] = page_data[0] | 0x02;
+        return DS2438_WritePage(0x00, page_data);
+    }
+    return DS2438_ERROR;
+
+}
+
+int DS2438_DisableCA(void)
+{
+    // Clear bit 1 in byte/page 0 of page 0
+    int page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
+    {
+        page_data[0] = page_data[0] & (~0x02);// Clear bit 1
+        return DS2438_WritePage(0x00, page_data);//write current Byte 0 with bit 1 cleared
     }
     return DS2438_ERROR;
 }

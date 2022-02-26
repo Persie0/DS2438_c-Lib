@@ -132,7 +132,7 @@ void OneWire_WriteBit(int bit);
 
 int main(void) {
     uart1_init();
-
+    //float voltage, temperature, current, capacity = 0;
     init_OnewirePort();
 
     if(DS2438_IsDevicePresent())
@@ -198,7 +198,7 @@ int DS2438_IsDevicePresent(void)
 int DS2438_EnableIAD(void)// Enable current measurements and ICA
 {
     int page_data[9];
-    //Enable Current A/D Control Bit (Set bit 0 in byte/page 0 of page 0)
+    //Enable Current A/D Control Bit (Set bit 0 in byte 0 of page 0)
     if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // set bit 0
@@ -210,9 +210,9 @@ int DS2438_EnableIAD(void)// Enable current measurements and ICA
 
 int DS2438_DisableIAD(void)// Disable current measurements and ICA
 {
-    // Clear bit 0 in byte/page 0 of page 0
+    // Clear bit 0 in byte 0 of page 0
     int page_data[9];
-    if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
+    if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // Clear bit 0
         page_data[0] = page_data[0] & (~0x01);
@@ -223,9 +223,9 @@ int DS2438_DisableIAD(void)// Disable current measurements and ICA
 
 int DS2438_EnableCA(void)
 {
-    // Set bit 1 in byte/page 0 of page 0
+    // Set bit 1 in byte 0 of page 0
     int page_data[9];
-    if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
+    if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // set bit 1
         page_data[0] = page_data[0] | 0x02;
@@ -237,9 +237,9 @@ int DS2438_EnableCA(void)
 
 int DS2438_DisableCA(void)
 {
-    // Clear bit 1 in byte/page 0 of page 0
+    // Clear bit 1 in byte 0 of page 0
     int page_data[9];
-    if (DS2438_ReadPage(0x00, page_data))//read Byte/Page 0 successful?
+    if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // Clear bit 1
         page_data[0] = page_data[0] & (~0x02);
@@ -378,6 +378,71 @@ int OneWire_ReadBit()
     wait_10us(6); // Complete the Time Slot time and Recovery Time
 
     return result;
+}
+
+int DS2438_StartVoltageConversion(void)
+{
+    // Reset sequence
+    if (DS2438_IsDevicePresent())
+    {
+        // Write read rom command
+        OneWire_WriteByte(DS2438_SKIP_ROM);
+        OneWire_WriteByte(DS2438_VOLTAGE_CONV);
+        return DS2438_OP_SUCCESS;
+    }
+    return DS2438_DEV_NOT_FOUND;
+}
+
+int DS2438_ReadVoltage(float* voltage)
+{
+    if (DS2438_StartVoltageConversion())
+    {
+        while(DS2438_HasVoltageData());
+        return DS2438_GetVoltageData(voltage);
+    }
+    return DS2438_ERROR;
+}
+
+int DS2438_HasVoltageData(void)
+{
+    int page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))
+    {
+        //TODO: CRC check
+
+        //the DS2438 will output “0” on the bus as
+        //long as it is busy making a voltage measurement;
+        //it will return a “1” when the conversion is complete
+        if ((page_data[0] & (0x01 << 6)) == 0)
+        {
+            return DS2438_OP_SUCCESS;
+        }
+        else
+        {
+            return DS2438_ERROR;
+        }
+
+    }
+    return DS2438_DEV_NOT_FOUND;
+}
+
+int DS2438_GetVoltageData(float* mV_voltage)
+{
+    int page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))
+    {
+        //TODO: CRC check
+        //getting the 2 VOLTAGE REGISTER byte:
+        int volt_lsb = page_data[3];
+        int volt_msb = page_data[4];
+        //volt_msb only has 2 valid bits, rest is 0
+        //moving the msb by 8 bits so the result is MSB+LSB
+        //divide by 10 because the resolution is 10 mV
+        //resulting voltage is in mV
+        *mV_voltage = (((volt_msb & 0xFF) << 8) | (volt_lsb)) / 10.0;
+        return DS2438_OP_SUCCESS;
+    }
+    return DS2438_DEV_NOT_FOUND;
 }
 
 

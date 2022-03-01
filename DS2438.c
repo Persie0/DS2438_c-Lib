@@ -23,15 +23,25 @@ void uart_put_string_newline(char *string);
 int reset_Onewire(void);
 void init_OnewirePort(void);
 void wait_10us(int mal);
-int enableIAD(void);
-int DS2438_ReadPage(int page_number, int* page_data);
-int DS2438_WritePage(int page_number, int* page_data);
-void wait_us(int factor);
-void OneWire_WriteByte(int data);
-int OneWire_ReadBit();
-int OneWire_ReadByte();
 int DS2438_IsDevicePresent(void);
+uint8_t DS2438_EnableIAD(void);
+uint8_t DS2438_DisableIAD(void);
+uint8_t DS2438_EnableCA(void);
+uint8_t DS2438_DisableCA(void);
+uint8_t DS2438_ReadPage(uint8_t page_number, uint8_t* page_data);
+uint8_t DS2438_WritePage(uint8_t page_number, uint8_t * page_data);
+void OneWire_WriteByte(int data);
 void OneWire_WriteBit(int bit);
+int OneWire_ReadByte();
+int OneWire_ReadBit();
+uint8_t DS2438_StartVoltageConversion(void);
+uint8_t DS2438_ReadVoltage(float* voltage);
+uint8_t DS2438_HasVoltageData(void);
+uint8_t DS2438_GetVoltageData(float* mV_voltage);
+uint8_t DS2438_GetCurrentData(float* current);
+
+
+
 
 /*----------------------------- Define Pins for Onewire--------------*/
 #define GPIOA_IDR GPIOA_BASE + 2*sizeof(uint32_t)    // Calc peripheral address GPIOA IDR
@@ -126,7 +136,7 @@ void OneWire_WriteBit(int bit);
   * @brief Ouput 8 Bit value to 8 LED Array of PMOD_LED (connected to PMOD1)
   *
   * @param value - 8 bit value to display on LED Array
-  * @retval none 
+  * @retval none
   *****************************************************************************
   */
 
@@ -192,12 +202,12 @@ int reset_Onewire(void) {
 int DS2438_IsDevicePresent(void)
 {
     // check if device is present on the bus
-        return reset_Onewire() == 0;
+    return reset_Onewire() == 0;
 }
 
-int DS2438_EnableIAD(void)// Enable current measurements and ICA
+uint8_t DS2438_EnableIAD(void)// Enable current measurements and ICA
 {
-    int page_data[9];
+    uint8_t page_data[9];
     //Enable Current A/D Control Bit (Set bit 0 in byte 0 of page 0)
     if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
@@ -208,10 +218,10 @@ int DS2438_EnableIAD(void)// Enable current measurements and ICA
     return DS2438_ERROR;
 }
 
-int DS2438_DisableIAD(void)// Disable current measurements and ICA
+uint8_t DS2438_DisableIAD(void)// Disable current measurements and ICA
 {
     // Clear bit 0 in byte 0 of page 0
-    int page_data[9];
+    uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // Clear bit 0
@@ -221,10 +231,10 @@ int DS2438_DisableIAD(void)// Disable current measurements and ICA
     return DS2438_ERROR;
 }
 
-int DS2438_EnableCA(void)
+uint8_t DS2438_EnableCA(void)
 {
     // Set bit 1 in byte 0 of page 0
-    int page_data[9];
+    uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // set bit 1
@@ -235,7 +245,7 @@ int DS2438_EnableCA(void)
 
 }
 
-int DS2438_DisableCA(void)
+uint8_t DS2438_DisableCA(void)
 {
     // Clear bit 1 in byte 0 of page 0
     int page_data[9];
@@ -249,7 +259,7 @@ int DS2438_DisableCA(void)
 }
 
 // Read one page of data, cbv - return page data
-int DS2438_ReadPage(int page_number, int* page_data)
+uint8_t DS2438_ReadPage(uint8_t page_number, uint8_t* page_data)
 {
     if (page_number > 0x07)//there are only pages from 0x00 to 0x07
         return DS2438_BAD_PARAM;
@@ -264,14 +274,14 @@ int DS2438_ReadPage(int page_number, int* page_data)
             OneWire_WriteByte(page_number);//page number from which to recall memory
             if (DS2438_IsDevicePresent())// Reset sequence
             {
-                // Skip ROM command 
+                // Skip ROM command
                 OneWire_WriteByte(DS2438_SKIP_ROM);
                 // Read scratchpad command
                 OneWire_WriteByte(DS2438_READ_SCRATCHPAD);
                 //  which scratchpad page number to read from
                 OneWire_WriteByte(page_number);
                 // Read nine bytes
-                for (int i = 0; i < 9; i++) //eight 8-byte pages, 9th byte contains a cyclic redundancy check (CRC) byte
+                for (uint8_t i = 0; i < 9; i++) //eight 8-byte pages, 9th byte contains a cyclic redundancy check (CRC) byte
                 {
                     page_data[i] = OneWire_ReadByte();
                 }
@@ -283,7 +293,7 @@ int DS2438_ReadPage(int page_number, int* page_data)
 }
 
 // Write one page of data
-int DS2438_WritePage(int page_number, int * page_data)
+uint8_t DS2438_WritePage(uint8_t page_number, uint8_t * page_data)
 {
     if (page_number > 0x07)//there are only pages 0x00 to 0x07
         return DS2438_BAD_PARAM;
@@ -298,13 +308,13 @@ int DS2438_WritePage(int page_number, int * page_data)
             OneWire_WriteByte(WRITE_SCRATCHPAD);
             // Write page data followed by page data
             OneWire_WriteByte(page_number);
-            for (int i = 0; i < 9; i++)
+            for (uint8_t i = 0; i < 9; i++)
             {
                 OneWire_WriteByte(page_data[i]);
             }
             if (DS2438_IsDevicePresent())
             {
-                // Skip ROM command 
+                // Skip ROM command
                 OneWire_WriteByte(SKIP_ROM);
                 // Copy scratchpad command
                 OneWire_WriteByte(COPY_SCRATCHPAD);
@@ -380,7 +390,7 @@ int OneWire_ReadBit()
     return result;
 }
 
-int DS2438_StartVoltageConversion(void)
+uint8_t DS2438_StartVoltageConversion(void)
 {
     // Reset sequence
     if (DS2438_IsDevicePresent())
@@ -393,7 +403,7 @@ int DS2438_StartVoltageConversion(void)
     return DS2438_DEV_NOT_FOUND;
 }
 
-int DS2438_ReadVoltage(float* voltage)
+uint8_t DS2438_ReadVoltage(float* voltage)
 {
     if (DS2438_StartVoltageConversion())
     {
@@ -403,9 +413,9 @@ int DS2438_ReadVoltage(float* voltage)
     return DS2438_ERROR;
 }
 
-int DS2438_HasVoltageData(void)
+uint8_t DS2438_HasVoltageData(void)
 {
-    int page_data[9];
+    uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
     {
         //TODO: CRC check
@@ -426,15 +436,15 @@ int DS2438_HasVoltageData(void)
     return DS2438_DEV_NOT_FOUND;
 }
 
-int DS2438_GetVoltageData(float* mV_voltage)
+uint8_t DS2438_GetVoltageData(float* mV_voltage)
 {
-    int page_data[9];
+    uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
     {
         //TODO: CRC check
         //getting the 2 VOLTAGE REGISTER byte:
-        int volt_lsb = page_data[3];
-        int volt_msb = page_data[4];
+        uint8_t volt_lsb = page_data[3];
+        uint8_t volt_msb = page_data[4];
         //volt_msb only has 2 valid bits, rest is 0
         //moving the msb by 8 bits so the result is MSB+LSB
         //divide by 10 because the resolution is 10 mV

@@ -150,7 +150,6 @@ uint8_t DS2438_GetCurrentData(float* current);
 
 int main(void) {
     uart1_init();
-    //float voltage, temperature, current, capacity = 0;
     init_OnewirePort();
 
     if(DS2438_IsDevicePresent())
@@ -160,6 +159,43 @@ int main(void) {
     }
     else
         uart_put_string_newline("no Device found");
+
+    float voltage, current = 0;
+
+    for(;;)
+    {
+
+        if (DS2438_ReadVoltage(&voltage))
+        {
+            sprintf(msg, "Voltage: %d", (int)(voltage*1000));
+            uart_put_string_newline(msg);
+
+        }
+        else
+        {
+            uart_put_string_newline("Could not read voltage");
+        }
+        if (DS2438_GetCurrentData(&current))
+        {
+            sprintf(msg, "mAmps: %d", (int)(current*1000));
+            uart_put_string_newline(msg);
+
+        }
+        else
+        {
+            uart_put_string_newline("Could not read current");
+        }
+        for (uint8_t page = 0; page < 7; page++)
+        {
+            uint8_t page_data[9];
+            DS2438_ReadPage(page, page_data);
+            sprintf(msg, "0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\r\n", page_data[0], page_data[1],
+                    page_data[2], page_data[3],
+                    page_data[4], page_data[5],
+                    page_data[6], page_data[7]);
+            uart_put_string_newline(msg);
+        }
+    }
 }
 
 void wait_10us(int factor){	//wait for 10us multiplied by the value that gets passed as argument

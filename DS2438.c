@@ -483,7 +483,7 @@ uint8_t DS2438_GetCurrentData(float* current)
             data *= -1;
         }
 
-        *current = (data) / (4096.*DS2438_SENSE_RESISTOR);
+        *current = (data) / (4096*DS2438_SENSE_RESISTOR);
         return DS2438_OP_SUCCESS;
     }
     else

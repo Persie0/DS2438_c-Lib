@@ -32,8 +32,8 @@ uint8_t DS2438_ReadPage(uint8_t page_number, uint8_t* page_data);
 uint8_t DS2438_WritePage(uint8_t page_number, uint8_t * page_data);
 void OneWire_WriteByte(int data);
 void OneWire_WriteBit(int bit);
-int OneWire_ReadByte();
-int OneWire_ReadBit();
+int OneWire_ReadByte(void);
+int OneWire_ReadBit(void);
 uint8_t DS2438_StartVoltageConversion(void);
 uint8_t DS2438_ReadVoltage(float* voltage);
 uint8_t DS2438_HasVoltageData(void);
@@ -160,7 +160,11 @@ int main(void) {
     else
         uart_put_string_newline("no Device found");
 
+    DS2438_EnableIAD();
+    DS2438_EnableCA();
+
     float voltage, current = 0;
+    char msg[50];
 
     for(;;)
     {
@@ -179,22 +183,12 @@ int main(void) {
         {
             sprintf(msg, "mAmps: %d", (int)(current*1000));
             uart_put_string_newline(msg);
-
         }
         else
         {
             uart_put_string_newline("Could not read current");
         }
-        for (uint8_t page = 0; page < 7; page++)
-        {
-            uint8_t page_data[9];
-            DS2438_ReadPage(page, page_data);
-            sprintf(msg, "0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\r\n", page_data[0], page_data[1],
-                    page_data[2], page_data[3],
-                    page_data[4], page_data[5],
-                    page_data[6], page_data[7]);
-            uart_put_string_newline(msg);
-        }
+				wait_10us(300000);
     }
 }
 
@@ -233,12 +227,10 @@ void init_OnewirePort(void) {
 }
 
 int reset_Onewire(void) {
-    int result;
     Onewire_Out=0; // Drives DQ low
     wait_10us(50);
     Onewire_Out=1; // Releases the bus
     wait_10us(7);
-
     return Onewire_In; //0 if low pulse from slave detected, 1 if not
 }
 
@@ -256,7 +248,7 @@ uint8_t DS2438_EnableIAD(void)// Enable current measurements and ICA
     if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // set bit 0
-        page_data[0] = page_data[0] | 0x01;
+        page_data[0] |= 0x01;
         return DS2438_WritePage(0x00, page_data);//write Page 0 successful?
     }
     return DS2438_ERROR;
@@ -292,7 +284,7 @@ uint8_t DS2438_EnableCA(void)
 uint8_t DS2438_DisableCA(void)
 {
     // Clear bit 1 in byte 0 of page 0
-    int page_data[9];
+    uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))//read Page 0 successful?
     {
         // Clear bit 1
@@ -349,7 +341,7 @@ uint8_t DS2438_WritePage(uint8_t page_number, uint8_t * page_data)
             // Skip ROM command [CCh]
             OneWire_WriteByte(DS2438_SKIP_ROM);
             // Write scratchpad command
-            OneWire_WriteByte(WRITE_SCRATCHPAD);
+            OneWire_WriteByte(DS2438_WRITE_SCRATCHPAD);
             // Write page data followed by page data
             OneWire_WriteByte(page_number);
             for (uint8_t i = 0; i < 9; i++)
@@ -359,9 +351,9 @@ uint8_t DS2438_WritePage(uint8_t page_number, uint8_t * page_data)
             if (DS2438_IsDevicePresent())
             {
                 // Skip ROM command
-                OneWire_WriteByte(SKIP_ROM);
+                OneWire_WriteByte(DS2438_SKIP_ROM);
                 // Copy scratchpad command
-                OneWire_WriteByte(COPY_SCRATCHPAD);
+                OneWire_WriteByte(DS2438_COPY_SCRATCHPAD);
                 // Write page number
                 OneWire_WriteByte(page_number);
                 return DS2438_OP_SUCCESS;
@@ -406,7 +398,7 @@ void OneWire_WriteBit(int bit)
     }
 }
 
-int OneWire_ReadByte()
+int OneWire_ReadByte(void)
 {
     int bit, result=0x0;
     for (bit = 0; bit < 8; bit++)
@@ -421,14 +413,14 @@ int OneWire_ReadByte()
     return result;
 }
 
-int OneWire_ReadBit()
+int OneWire_ReadBit(void)
 {
     int result;
     Onewire_Out=0; // Drives DQ low
     wait_us(4); // Complete the Read Low Time
     Onewire_Out=1; // Releases the bus
     wait_us(4);//be sure Onewire_Out is 1 but to be still in the Read Data Valid time window
-    result = Onewire_In // Sample the bit value from the slave
+    result = Onewire_In;// Sample the bit value from the slave
     wait_10us(6); // Complete the Time Slot time and Recovery Time
 
     return result;
@@ -493,7 +485,7 @@ uint8_t DS2438_GetVoltageData(float* mV_voltage)
         //moving the msb by 8 bits so the result is MSB+LSB
         //divide by 10 because the resolution is 10 mV
         //resulting voltage is in mV
-        *mV_voltage = (((volt_msb && 0x3) << 8) || (volt_lsb)) / 10.0;
+        *mV_voltage = (((volt_msb & 0x3) << 8) | (volt_lsb)) / 10.0;
         return DS2438_OP_SUCCESS;
     }
     return DS2438_DEV_NOT_FOUND;
@@ -510,11 +502,11 @@ uint8_t DS2438_GetCurrentData(float* current)
         uint8_t curr_msb = page_data[6];
         //curr_msb only has 2 valid bits, rest is sign
         //moving the msb by 8 bits so the result is MSB+LSB
-        uint16_t data = (((curr_msb && 0x3) << 8) || (curr_lsb));
+        uint16_t data = (((curr_msb & 0x3) << 8) | (curr_lsb));
         //The sign (S) of the result, indicating charge or discharge,
         //resides in the most significant bit of the Current Register
         //discharge? - current negative?
-        if ((curr_msb && ~0x3))
+        if ((curr_msb & ~0x3))
         {
             data *= -1;
         }

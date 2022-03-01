@@ -445,6 +445,42 @@ int DS2438_GetVoltageData(float* mV_voltage)
     return DS2438_DEV_NOT_FOUND;
 }
 
+// Get current data in float format
+uint8_t DS2438_GetCurrentData(float* current)
+{
+    uint8_t page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))
+    {
+        uint8_t curr_lsb = page_data[5];
+        uint8_t curr_msb = page_data[6];
+        int16_t curr_data = 0;
+        //The sign (S) of the result, indicating charge or discharge,
+        //resides in the most significant bit of the Current Register
+        //discharge? - current negative?
+        if ((curr_msb && ~0x03))
+        {
+            // current is negative
+            uint16_t data = (curr_msb<<8) | (curr_lsb);
+            // perform 2's complement
+            int16_t temp = (~data) & 0x3FF;
+            curr_data = (short)(temp * -1);
+        }
+        else
+        {
+            curr_data = (curr_msb << 8) | (curr_lsb & 0xFF);
+        }
+
+        *current = (curr_data) / (4096.*DS2438_SENSE_RESISTOR);
+        return DS2438_OK;
+    }
+    else
+    {
+        return DS2438_ERROR;
+    }
+    return DS2438_DEV_NOT_FOUND;
+}
+
+
 
 
 

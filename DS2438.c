@@ -53,6 +53,14 @@ uint8_t DS2438_GetCurrentData(float* current);
 #define Onewire_Out  *((volatile unsigned long *)(BITBAND_PERI(GPIOA_ODR,0)))  // PA0; OneWire Leitung Out
 #define Onewire_In  *((volatile unsigned long *)(BITBAND_PERI(GPIOA_IDR,0)))  // PA0; OneWire Leitung In
 
+// ===========================================================
+//                      SENSE RESISTOR
+// ===========================================================
+
+/**
+*   \brief Value of sense resistor to be used for current computation.
+*/
+#define DS2438_SENSE_RESISTOR 150
 
 // ===========================================================
 //                      ERROR CODES
@@ -449,7 +457,7 @@ uint8_t DS2438_GetVoltageData(float* mV_voltage)
         //moving the msb by 8 bits so the result is MSB+LSB
         //divide by 10 because the resolution is 10 mV
         //resulting voltage is in mV
-        *mV_voltage = (((volt_msb & 0xFF) << 8) | (volt_lsb)) / 10.0;
+        *mV_voltage = (((volt_msb && 0x3) << 8) || (volt_lsb)) / 10.0;
         return DS2438_OP_SUCCESS;
     }
     return DS2438_DEV_NOT_FOUND;
@@ -461,33 +469,27 @@ uint8_t DS2438_GetCurrentData(float* current)
     uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
     {
+        //getting the 2 Current REGISTER byte:
         uint8_t curr_lsb = page_data[5];
         uint8_t curr_msb = page_data[6];
-        int16_t curr_data = 0;
+        //curr_msb only has 2 valid bits, rest is sign
+        //moving the msb by 8 bits so the result is MSB+LSB
+        uint16_t data = (((curr_msb && 0x3) << 8) || (curr_lsb));
         //The sign (S) of the result, indicating charge or discharge,
         //resides in the most significant bit of the Current Register
         //discharge? - current negative?
-        if ((curr_msb && ~0x03))
+        if ((curr_msb && ~0x3))
         {
-            // current is negative
-            uint16_t data = (curr_msb<<8) | (curr_lsb);
-            // perform 2's complement
-            int16_t temp = (~data) & 0x3FF;
-            curr_data = (short)(temp * -1);
-        }
-        else
-        {
-            curr_data = (curr_msb << 8) | (curr_lsb & 0xFF);
+            data *= -1;
         }
 
-        *current = (curr_data) / (4096.*DS2438_SENSE_RESISTOR);
-        return DS2438_OK;
+        *current = (data) / (4096.*DS2438_SENSE_RESISTOR);
+        return DS2438_OP_SUCCESS;
     }
     else
     {
         return DS2438_ERROR;
     }
-    return DS2438_DEV_NOT_FOUND;
 }
 
 

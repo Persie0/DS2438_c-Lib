@@ -165,23 +165,20 @@ uint8_t DS2438_SelectInputSource(uint8_t input_source);
 int main(void) {
     uart1_init();
     init_OnewirePort();
-
+	
     if(!DS2438_IsDevicePresent())
     {
         uart_put_string_newline("no Device found");
     }
     else
     {
-        uint8_t page_data[9];
-
-        uart_put_string_newline("Device present");
+			  uart_put_string_newline("Device present");
+			
         DS2438_EnableIAD();
         DS2438_EnableCA();
         DS2438_SelectInputSource(DS2438_INPUT_VOLTAGE_VAD);
 
-        DS2438_ReadPage(0x00, page_data);
-        uart_put_page_content(page_data);
-
+			
         float voltage, current = 0;
         char msg[50];
 
@@ -189,6 +186,7 @@ int main(void) {
 
         if (DS2438_ReadVoltage(&voltage))
         {
+					uart_put_string_newline("Voooolt");
             sprintf(msg, "Voltage: %d", (int)(voltage*1000));
             uart_put_string_newline(msg);
 
@@ -206,6 +204,7 @@ int main(void) {
         {
             uart_put_string_newline("Could not read current");
         }
+				uart_put_string_newline("");
         wait_10us(300000);
     }}
 
@@ -215,7 +214,7 @@ void wait_10us(int factor){	//wait for 10us multiplied by the value that gets pa
     }
 }
 
-void wait_us(int factor){	//wait for 1us multiplied by the value that gets passed as argument
+void wait_us(int factor){	//wait for us multiplied by the value that gets passed as argument
     int j;
     for(j = 0; j < 8*factor; j++) {
     }
@@ -248,7 +247,9 @@ int reset_Onewire(void) {
     wait_10us(50);
     Onewire_Out=1; // Releases the bus
     wait_10us(7);
-    return Onewire_In; //0 if low pulse from slave detected, 1 if not
+    int result=Onewire_In;
+    wait_10us(42);
+    return result; //0 if low pulse from slave detected, 1 if not
 }
 
 //returns 1 if device is ok
@@ -401,17 +402,17 @@ void OneWire_WriteBit(int bit)
     {
         // Write '1' bit
         Onewire_Out=0; // Drives DQ low
-        wait_us(6); // Complete the Write 1 Low Time time
-        Onewire_Out=0; // Releases the bus
-        wait_10us(64); // Complete the Time Slot time and Recovery Time
+        wait_10us(1); // Complete the Write 1 Low Time time
+        Onewire_Out=1; // Releases the bus
+        wait_10us(7); // Complete the Time Slot time and Recovery Time
     }
     else
     {
         // Write '0' bit
         Onewire_Out=0; // Drives DQ low
-        wait_us(60); // Complete the Write 0 Low Time and Time Slot time
+        wait_10us(7); // Complete the Write 0 Low Time and Time Slot time
         Onewire_Out=1; // Releases the bus
-        wait_us(6);// Complete the Recovery Time
+        wait_10us(1);// Complete the Recovery Time
     }
 }
 
@@ -434,9 +435,9 @@ int OneWire_ReadBit(void)
 {
     int result;
     Onewire_Out=0; // Drives DQ low
-    wait_us(2); // Complete the Read Low Time
+    wait_us(4); // Complete the Read Low Time
     Onewire_Out=1; // Releases the bus
-    wait_us(10);//be sure Onewire_Out is 1 but to be still in the Read Data Valid time window
+    wait_us(5);//be sure Onewire_Out is 1 but to be still in the Read Data Valid time window
     result = Onewire_In;// Sample the bit value from the slave
     wait_10us(6); // Complete the Time Slot time and Recovery Time
     return result;
@@ -472,18 +473,10 @@ uint8_t DS2438_HasVoltageData(void)
     {
         //TODO: CRC check
 
-        //the DS2438 will output “0” on the bus as
+        //the DS2438 will output “1” on the bus as
         //long as it is busy making a voltage measurement;
-        //it will return a “1” when the conversion is complete
-        if ((page_data[0] & (0x01 << 6)) == 0)
-        {
-            return DS2438_OP_SUCCESS;
-        }
-        else
-        {
-            return DS2438_ERROR;
-        }
-
+        //it will return a “0” when the conversion is complete
+        return (page_data[0] & 0x40)
     }
     return DS2438_DEV_NOT_FOUND;
 }

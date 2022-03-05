@@ -40,7 +40,12 @@ uint8_t DS2438_HasVoltageData(void);
 uint8_t DS2438_GetVoltageData(float* mV_voltage);
 uint8_t DS2438_GetCurrentData(float* current);
 uint8_t DS2438_SelectInputSource(uint8_t input_source);
-
+uint8_t DS2438_GetCapacity_mAh(float* capacity_mAh);
+uint8_t DS2438_GetICA(uint8_t* ica);
+uint8_t DS2438_GetTemperatureData(float* temperature);
+uint8_t DS2438_HasTemperatureData(void);
+uint8_t DS2438_StartTemperatureConversion(void);
+uint8_t DS2438_ReadTemperature(float* temperature);
 
 /*----------------------------- Define Pins for Onewire--------------*/
 #define GPIOA_IDR GPIOA_BASE + 2*sizeof(uint32_t)    // Calc peripheral address GPIOA IDR
@@ -84,11 +89,6 @@ uint8_t DS2438_SelectInputSource(uint8_t input_source);
 *   \brief Device was not found on the 1-Wire interface.
 */
 #define DS2438_DEV_NOT_FOUND    0
-
-/**
-*   \brief CRC Check failed.
-*/
-#define DS2438_CRC_FAIL         0
 
 /**
 *   \brief Operation finished unsuccessfully.
@@ -165,47 +165,65 @@ uint8_t DS2438_SelectInputSource(uint8_t input_source);
 int main(void) {
     uart1_init();
     init_OnewirePort();
-	
+    float voltage, temperature, current, capacity = 0;
+    char msg[50];
+
     if(!DS2438_IsDevicePresent())
     {
         uart_put_string_newline("no Device found");
     }
     else
     {
-			  uart_put_string_newline("Device present");
-			
+        uart_put_string_newline("Device present");
+
         DS2438_EnableIAD();
         DS2438_EnableCA();
         DS2438_SelectInputSource(DS2438_INPUT_VOLTAGE_VAD);
 
-			
-        float voltage, current = 0;
-        char msg[50];
 
+        while (1) {
+            if (DS2438_ReadVoltage(&voltage)) {
+                sprintf(msg, "V: %f", voltage);
+                uart_put_string_newline(msg);
 
+            } else {
+                uart_put_string_newline("Could not read voltage");
+            }
+            if (DS2438_GetCurrentData(&current)) {
+                sprintf(msg, "mA: %.8f", current);
+                uart_put_string_newline(msg);
+            } else {
+                uart_put_string_newline("Could not read current");
+            }
+            if (DS2438_GetCapacity_mAh(&capacity))
+            {
+                sprintf(msg, "Capacity in mAh: %.8f", capacity);
+                uart_put_string_newline(msg);
+            }
+            else
+            {
+                uart_put_string_newline("Could not read current");
+            }
+            if (DS2438_ReadTemperature(&temperature))
+            {
+                sprintf(msg, "Temperature: %.8f", temperature*1000);
+                uart_put_string_newline(msg);
+            }
+            else
+            {
+                uart_put_string_newline("Could not read temperature\r\n");
+            }
 
-        if (DS2438_ReadVoltage(&voltage))
-        {
-					uart_put_string_newline("Voooolt");
-            sprintf(msg, "Voltage: %d", (int)(voltage*1000));
-            uart_put_string_newline(msg);
-
+            uart_put_string_newline("");
+            uart_put_string_newline("Pagedata (00h-06h):");
+            for (uint8_t page = 0; page < 7; page++)
+            {
+                uint8_t page_data[9];
+                DS2438_ReadPage(page, page_data);
+                uart_put_page_content(page_data);
+            }
+            wait_10us(200000);
         }
-        else
-        {
-            uart_put_string_newline("Could not read voltage");
-        }
-        if (DS2438_GetCurrentData(&current))
-        {
-            sprintf(msg, "mAmps: %d", (int)(current*1000));
-            uart_put_string_newline(msg);
-        }
-        else
-        {
-            uart_put_string_newline("Could not read current");
-        }
-				uart_put_string_newline("");
-        wait_10us(300000);
     }}
 
 void wait_10us(int factor){	//wait for 10us multiplied by the value that gets passed as argument
@@ -244,11 +262,11 @@ void init_OnewirePort(void) {
 
 int reset_Onewire(void) {
     Onewire_Out=0; // Drives DQ low
-    wait_10us(50);
+    wait_10us(50);//Reset Time Low
     Onewire_Out=1; // Releases the bus
-    wait_10us(7);
+    wait_10us(7);// wait Presence Detect High time + 10s to be in Presence Detect High time window
     int result=Onewire_In;
-    wait_10us(42);
+    wait_10us(42);//finish Reset Time High
     return result; //0 if low pulse from slave detected, 1 if not
 }
 
@@ -308,6 +326,31 @@ uint8_t DS2438_DisableCA(void)
         // Clear bit 1
         page_data[0] = page_data[0] & (~0x02);
         return DS2438_WritePage(0x00, page_data);//write current Byte 0 with bit 1 cleared
+    }
+    return DS2438_ERROR;
+}
+
+
+// Get value of integrated current accumalator
+uint8_t DS2438_GetICA(uint8_t* ica)
+{
+    // Read byte 4 of page 1
+    uint8_t page_data[9];
+    if (DS2438_ReadPage(0x01, page_data))
+    {
+        *ica = page_data[4];
+        return DS2438_OP_SUCCESS;
+    }
+    return DS2438_ERROR;
+}
+
+uint8_t DS2438_GetCapacity_mAh(float* capacity_mAh)
+{
+    uint8_t ica = 0;
+    if (DS2438_GetICA(&ica))
+    {
+        *capacity_mAh = ica/(2.048*DS2438_SENSE_RESISTOR);
+        return DS2438_OP_SUCCESS;
     }
     return DS2438_ERROR;
 }
@@ -435,9 +478,9 @@ int OneWire_ReadBit(void)
 {
     int result;
     Onewire_Out=0; // Drives DQ low
-    wait_us(4); // Complete the Read Low Time
+    wait_us(7); // Complete the Read Low Time
     Onewire_Out=1; // Releases the bus
-    wait_us(5);//be sure Onewire_Out is 1 but to be still in the Read Data Valid time window
+    wait_us(10);//be sure Onewire_Out is 1 but to be still in the Read Data Valid time window
     result = Onewire_In;// Sample the bit value from the slave
     wait_10us(6); // Complete the Time Slot time and Recovery Time
     return result;
@@ -476,32 +519,32 @@ uint8_t DS2438_HasVoltageData(void)
         //the DS2438 will output “1” on the bus as
         //long as it is busy making a voltage measurement;
         //it will return a “0” when the conversion is complete
-        return (page_data[0] & 0x40)
+        return (page_data[0] & 0x40);
     }
     return DS2438_DEV_NOT_FOUND;
 }
 
-uint8_t DS2438_GetVoltageData(float* mV_voltage)
+uint8_t DS2438_GetVoltageData(float* mV_)
 {
     uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
     {
         //TODO: CRC check
-        //getting the 2 VOLTAGE REGISTER byte:
+        //getting the 2  REGISTER byte:
         uint8_t volt_lsb = page_data[3];
         uint8_t volt_msb = page_data[4];
         //volt_msb only has 2 valid bits, rest is 0
         //moving the msb by 8 bits so the result is MSB+LSB
-        //divide by 10 because the resolution is 10 mV
-        //resulting voltage is in mV
-        *mV_voltage = (((volt_msb & 0x3) << 8) | (volt_lsb)) / 10.0;
+        //divide by 100 because the unit = 10 mV
+        //resulting  is in V
+        *mV_ = (((volt_msb & 0x3) << 8) | (volt_lsb)) / 100.0;
         return DS2438_OP_SUCCESS;
     }
     return DS2438_DEV_NOT_FOUND;
 }
 
 // Get current data in float format
-uint8_t DS2438_GetCurrentData(float* current)
+uint8_t DS2438_GetCurrentData(float* mA_current)
 {
     uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
@@ -509,18 +552,24 @@ uint8_t DS2438_GetCurrentData(float* current)
         //getting the 2 Current REGISTER byte:
         uint8_t curr_lsb = page_data[5];
         uint8_t curr_msb = page_data[6];
+
+        char msg[50];
+        sprintf(msg, "lsb %d msb %d", curr_lsb, curr_msb);
+        uart_put_string_newline(msg);
         //curr_msb only has 2 valid bits, rest is sign
         //moving the msb by 8 bits so the result is MSB+LSB
         uint16_t data = (((curr_msb & 0x3) << 8) | (curr_lsb));
         //The sign (S) of the result, indicating charge or discharge,
         //resides in the most significant bit of the Current Register
         //discharge? - current negative?
+        sprintf(msg, "data %d", data);
+        uart_put_string_newline(msg);
         if ((curr_msb & ~0x3))
         {
             data *= -1;
         }
 
-        *current = (data) / (4096*DS2438_SENSE_RESISTOR);
+        *mA_current = ((data) / (4.096*DS2438_SENSE_RESISTOR));
         return DS2438_OP_SUCCESS;
     }
     else
@@ -557,8 +606,55 @@ uint8_t DS2438_SelectInputSource(uint8_t input_source)
     return DS2438_WritePage(0x00, page_data);
 }
 
+uint8_t DS2438_ReadTemperature(float* temperature)
+{
+    if (DS2438_StartTemperatureConversion())
+    {
+        while(DS2438_HasTemperatureData());
+        return DS2438_GetTemperatureData(temperature);
+    }
+    return DS2438_ERROR;
+}
+
+uint8_t DS2438_StartTemperatureConversion(void)
+{
+    // Reset sequence
+    if (DS2438_IsDevicePresent())
+    {
+        // Skip ROM and issue temperature conversion command
+        OneWire_WriteByte(DS2438_SKIP_ROM);
+        OneWire_WriteByte(DS2438_TEMP_CONV);
+        return DS2438_OP_SUCCESS;
+    }
+    return DS2438_DEV_NOT_FOUND;
+}
 
 
+uint8_t DS2438_HasTemperatureData(void)
+{
+    uint8_t page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))
+    {
+        //the DS2438 will output “1” on the bus as
+        //long as it is busy making a temperature measurement;
+        //it will return a “0” when the conversion is complete
+        return (page_data[0] & (0x01 << 4));
+    }
+    return DS2438_DEV_NOT_FOUND;
+}
+uint8_t DS2438_GetTemperatureData(float* temperature)
+{
+    // Read nine bytes
+    uint8_t page_data[9];
+    if (DS2438_ReadPage(0x00, page_data))
+    {
+        int16_t temp_lsb = page_data[1];
+        int16_t temp_msb = page_data[2];
+        *temperature = (((temp_msb&0x80) << 8) | (temp_lsb >> 3)) * 0.03125;
+        return DS2438_OP_SUCCESS;
+    }
+        return DS2438_ERROR;
+}
 
 
 

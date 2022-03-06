@@ -645,9 +645,13 @@ uint8_t DS2438_GetTemperatureData(float* temperature)
     if (DS2438_ReadPage(0x00, page_data))
     {
         //getting the 2 temperature REGISTER byte:
-        int16_t temp_lsb = page_data[1];
-        int16_t temp_msb = page_data[2];
-        //only valid for positive temperature
+        uint8_t temp_lsb = page_data[1];
+        uint8_t temp_msb = page_data[2];
+        if(temp_msb & 0x80){}
+        else {
+            temperature = temp_msb;
+            temperature += ((temp_lsb >> 3) * 0.03125);
+        }
         //temperature is represented in the DS2438 in terms of a 0.03125 LSb
         *temperature = ((temp_msb << 8) | (temp_lsb >> 3)) * 0.03125;
         return DS2438_OP_SUCCESS;

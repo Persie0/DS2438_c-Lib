@@ -650,9 +650,9 @@ uint8_t DS2438_GetTemperatureData(float* temperature)
         //temperature positive?
         if(!(temp_msb & 0x80)) {
             //msb are whole numbers
-            temperature = temp_msb;
+            *temperature = temp_msb;
             //there is a 0.03125 LSb; bit the 3 LSBs are 0
-            temperature += ((temp_lsb >> 3) * 0.03125);
+            *temperature += ((temp_lsb >> 3) * 0.03125);
         }
         //temperature is represented in the DS2438 in terms of a 0.03125 LSb
         *temperature = ((temp_msb << 8) | (temp_lsb >> 3)) * 0.03125;

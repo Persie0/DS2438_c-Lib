@@ -206,7 +206,7 @@ int main(void) {
             }
             if (DS2438_ReadTemperature(&temperature))
             {
-                sprintf(msg, "Temperature: %.8f", temperature*1000);
+                sprintf(msg, "Temperature: %.8f", temperature);
                 uart_put_string_newline(msg);
             }
             else
@@ -564,7 +564,6 @@ uint8_t DS2438_GetCurrentData(float* mA_current)
         {
             data *= -1;
         }
-
         *mA_current = ((data) / (4.096*DS2438_SENSE_RESISTOR));
         return DS2438_OP_SUCCESS;
     }

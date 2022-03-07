@@ -206,7 +206,7 @@ int main(void) {
             }
             if (DS2438_ReadTemperature(&temperature))
             {
-                sprintf(msg, "Temperature: %.8f", temperature);
+                sprintf(msg, "Temperature: %.8f °C", temperature);
                 uart_put_string_newline(msg);
             }
             else

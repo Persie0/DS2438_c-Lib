@@ -654,8 +654,6 @@ uint8_t DS2438_GetTemperatureData(float* temperature)
             //there is a 0.03125 LSb; bit the 3 LSBs are 0
             *temperature += ((temp_lsb >> 3) * 0.03125);
         }
-        //temperature is represented in the DS2438 in terms of a 0.03125 LSb
-        *temperature = ((temp_msb << 8) | (temp_lsb >> 3)) * 0.03125;
         return DS2438_OP_SUCCESS;
     }
         return DS2438_ERROR;

@@ -18,7 +18,7 @@ void uart1_init(void);
 void uart_put_char(char ch);
 void uart_put_string(char *string);
 
-void uart_put_page_content(uint8_t* page_data);
+void uart_put_page_content(uint8_t* page_data, uint8_t page_number);
 void uart_put_string_newline(char *string);
 int reset_Onewire(void);
 void init_OnewirePort(void);
@@ -197,7 +197,7 @@ int main(void) {
             }
             if (DS2438_GetCapacity_mAh(&capacity))
             {
-                sprintf(msg, "Capacity in mAh: %.8f", capacity);
+                sprintf(msg, "Remaining Capacity in mAh: %.8f", capacity);
                 uart_put_string_newline(msg);
             }
             else
@@ -220,7 +220,7 @@ int main(void) {
             {
                 uint8_t page_data[9];
                 DS2438_ReadPage(page, page_data);
-                uart_put_page_content(page_data);
+                uart_put_page_content(page_data, page);
             }
             wait_10us(200000);
         }
@@ -239,14 +239,13 @@ void wait_us(int factor){	//wait for 1us multiplied by the value that gets passe
 }
 
 //print the content/page data from a page
-void uart_put_page_content(uint8_t* page_data)
+void uart_put_page_content(uint8_t* page_data, uint8_t page_number)
 {
     char msg[50];
-    sprintf(msg, "%d %d %d %d %d %d %d %d", page_data[0], page_data[1],
+    sprintf(msg, "Page %d content (MSB to LSB): %d %d %d %d %d %d %d %d", page_number, page_data[0], page_data[1],
             page_data[2], page_data[3],
             page_data[4], page_data[5],
             page_data[6], page_data[7]);
-    uart_put_string("Current page content (MSB to LSB): ");
     uart_put_string_newline(msg);
 }
 

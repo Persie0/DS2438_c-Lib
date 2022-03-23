@@ -1,0 +1,3 @@
+--create .\Objects\DS2438.lib
+.\objects\ds2438.o
+.\DS2438_Library.lib

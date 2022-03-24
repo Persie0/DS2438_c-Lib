@@ -412,9 +412,9 @@ uint8_t DS2438_HasVoltageData(void)
     {
         //TODO: CRC check
 
-        //the DS2438 will output “1” in the ADB = A/D Converter Busy Flag as
+        //the DS2438 will output ï¿½1ï¿½ in the ADB = A/D Converter Busy Flag as
         //long as it is busy making a voltage measurement;
-        //it will return a “0” when the conversion is complete
+        //it will return a ï¿½0ï¿½ when the conversion is complete
         return (page_data[0] & 0x40);
     }
     return DS2438_DEV_NOT_FOUND;
@@ -523,9 +523,9 @@ uint8_t DS2438_HasTemperatureData(void)
     uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
     {
-        //the DS2438 will output “1” in TB = Temperature Busy Flag bit as
+        //the DS2438 will output ï¿½1ï¿½ in TB = Temperature Busy Flag bit as
         //long as it is busy making a temperature measurement;
-        //it will return a “0” when the conversion is complete
+        //it will return a ï¿½0ï¿½ when the conversion is complete
         return (page_data[0] & (0x01 << 4));
     }
     return DS2438_DEV_NOT_FOUND;
@@ -546,6 +546,15 @@ uint8_t DS2438_GetTemperatureData(float* temperature)
             *temperature = temp_msb;
             //there is a 0.03125 LSb; bit the 3 LSBs are 0
             *temperature += ((temp_lsb >> 3) * 0.03125);
+        }
+        //temperature negative?
+        else
+        {
+            //msb are whole numbers
+            *temperature = temp_msb;
+            //there is a 0.03125 LSb; bit the 3 LSBs are 0
+            *temperature += ((temp_lsb >> 3) * 0.03125);
+            *temperature *= -1;
         }
         return DS2438_OP_SUCCESS;
     }

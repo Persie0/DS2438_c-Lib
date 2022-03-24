@@ -332,7 +332,7 @@ int OneWire_ReadByte(void);
     *   \return the bit that was read.
     */
 int OneWire_ReadBit(void);
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////NOCH NICHT FERTIG
     /**
     *   \brief Write a bit on 1-Wire interface.
     *   

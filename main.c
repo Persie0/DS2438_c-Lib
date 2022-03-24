@@ -4,7 +4,7 @@
   * @author  Daniel Marek, Marvin Perzi 
   * @version V01
   * @date    19-01-2022
-  * @brief   
+  * @brief   Main/Example program for the DS2438 (Battery Management IC) Libary
   ******************************************************************************
   * @history 19-01-2022: Perzi/Marek creation
   ******************************************************************************
@@ -14,34 +14,22 @@
 #include <stdio.h>
 #include "DS2438_Library.h"
 
-/**
-  *****************************************************************************
-  * @brief Ouput 8 Bit value to 8 LED Array of PMOD_LED (connected to PMOD1)
-  *
-  * @param value - 8 bit value to display on LED Array
-  * @retval none
-  *****************************************************************************
-  */
-
 int main(void) {
     uart1_init();
     init_OnewirePort();
     float voltage, temperature, current, capacity = 0;
     char msg[50];
 
-    if(!DS2438_IsDevicePresent())
+    if(!DS2438_IsDevicePresent())//DS2438 is not connected
     {
         uart_put_string_newline("no Device found");
     }
-    else
+    else//DS2438 is connected
     {
         uart_put_string_newline("Device present");
-
-        DS2438_EnableIAD();
-        DS2438_EnableCA();
+        DS2438_EnableIAD();//Enable Current measurement
+        DS2438_EnableCA();//Enable Current accumulator
         DS2438_SelectInputSource(DS2438_INPUT_VOLTAGE_VAD);
-
-
         while (1) {
             if (DS2438_ReadVoltage(&voltage)) {
                 sprintf(msg, "V: %f", voltage);

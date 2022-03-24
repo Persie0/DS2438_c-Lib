@@ -4,7 +4,7 @@
   * @author  Daniel Marek, Marvin Perzi 
   * @version V01
   * @date    19-01-2022
-  * @brief   Libary c file for the DS2438
+  * @brief   Libary c file for the DS2438 Libary
   ******************************************************************************
   * @history 19-01-2022: Perzi/Marek creation
   ******************************************************************************
@@ -37,12 +37,12 @@
 // ===========================================================
 
 /**
-*   \brief Value of sense resistor to be used for current computation.
+*   \brief Value (in Ohm) of sense resistor to be used for current computation.
 */
 #define DS2438_SENSE_RESISTOR 150
 
 // ===========================================================
-//                      ERROR CODES
+//                      RETURN CODES
 // ===========================================================
 
 /**
@@ -51,7 +51,7 @@
 #define DS2438_DEV_NOT_FOUND    0
 
 /**
-*   \brief Operation finished unsuccessfully.
+*   \brief Operation failed
 */
 #define DS2438_ERROR            0
 
@@ -112,15 +112,10 @@
 */
 #define DS2438_COPY_SCRATCHPAD 0x48
 
+// ===========================================================
+//                 FUNCTION BODIES
+// ===========================================================
 
-/**
-  *****************************************************************************
-  * @brief Ouput 8 Bit value to 8 LED Array of PMOD_LED (connected to PMOD1)
-  *
-  * @param value - 8 bit value to display on LED Array
-  * @retval none
-  *****************************************************************************
-  */
 void wait_10us(int factor){	//wait for 10us multiplied by the value that gets passed as argument
     int j;
     for(j = 0; j < 80*factor; j++) {

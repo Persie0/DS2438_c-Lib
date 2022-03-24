@@ -4,7 +4,7 @@
   * @author  Daniel Marek, Marvin Perzi 
   * @version V01
   * @date    19-01-2022
-  * @brief   
+  * @brief   Libary c file for the DS2438
   ******************************************************************************
   * @history 19-01-2022: Perzi/Marek creation
   ******************************************************************************
@@ -251,7 +251,7 @@ uint8_t DS2438_GetCapacity_mAh(float* capacity_mAh)
     return DS2438_ERROR;
 }
 
-// Read one page of data, cbv - return page data
+// Read one page of data, return page data
 uint8_t DS2438_ReadPage(uint8_t page_number, uint8_t* page_data)
 {
     if (page_number > 0x07)//there are only pages from 0x00 to 0x07
@@ -410,8 +410,6 @@ uint8_t DS2438_HasVoltageData(void)
     uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
     {
-        //TODO: CRC check
-
         //the DS2438 will output �1� in the ADB = A/D Converter Busy Flag as
         //long as it is busy making a voltage measurement;
         //it will return a �0� when the conversion is complete
@@ -425,7 +423,6 @@ uint8_t DS2438_GetVoltageData(float* mV_)
     uint8_t page_data[9];
     if (DS2438_ReadPage(0x00, page_data))
     {
-        //TODO: CRC check
         //getting the 2  REGISTER byte:
         uint8_t volt_lsb = page_data[3];
         uint8_t volt_msb = page_data[4];

@@ -32,11 +32,10 @@
     
     /**
     *   \brief Initializes the DS2438.
-    *
-    *   This function starts the device by checking that
+    *   This function resets the Onewire and checks if
     *   the DS2438 is present on the 1-Wire bus.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
+    *   \retval 0 if low pulse from slave detected
+    *   \retval 1 if no low pulse from slave detected
     */
 int reset_Onewire(void);
 
@@ -45,8 +44,8 @@ int reset_Onewire(void);
     *
     *   This function checks that the DS2438 is present
     *   on the 1-Wire bus.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
+    *   \retval 1 if device is present on the bus.
+    *   \retval 0 if device is not present on the bus.
     */
 int DS2438_IsDevicePresent(void);
 
@@ -59,7 +58,7 @@ int DS2438_IsDevicePresent(void);
     *
     *   This function starts a voltage conversion by sending the
     *   appropriate command to the DS2438.
-    *   \retval #DS2438_OK if device is present on the bus.
+    *   \retval #DS2438_OP_SUCCESS if device is present on the bus.
     *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
     */
 uint8_t DS2438_StartVoltageConversion(void);
@@ -69,9 +68,9 @@ uint8_t DS2438_StartVoltageConversion(void);
     *
     *   This function checks if a voltage conversion has been completed
     *   by reading the appropriate bit in the Status/Configuration register.
-    *   \retval #DS2438_OK if device is present on the bus.
+    *   \retval 1 as long as it is busy making a voltage measurement
     *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \retval 0 when the conversion is complete
     */
 uint8_t DS2438_HasVoltageData(void);
 
@@ -79,10 +78,9 @@ uint8_t DS2438_HasVoltageData(void);
     *   \brief Get voltage data.
     *
     *   This function gets the voltage data from the DS2438.
-    *   \param voltage pointer to variable where voltage data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
+    *   \param mV_voltage pointer to variable where voltage (in mV) data will be stored.
+    *   \retval #DS2438_OP_SUCCESS if device is present on the bus.
     *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
     */
 uint8_t DS2438_GetVoltageData(float* mV_voltage);
 
@@ -92,10 +90,10 @@ uint8_t DS2438_GetVoltageData(float* mV_voltage);
     *   This function is a blocking function that starts a voltage conversion,
     *   wait until new voltage data are available, and gets the voltage data from 
     *   the DS2438 converting it in float format.
-    *   \param voltage pointer to variable where voltage data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
+    *   \param voltage pointer to variable where voltage data (in mV) will be stored.
+    *   \retval #DS2438_OP_SUCCESS if device is present on the bus.
     *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \retval #DS2438_ERROR if operation had an error
     */
 uint8_t DS2438_ReadVoltage(float* voltage);
 
@@ -106,9 +104,9 @@ uint8_t DS2438_ReadVoltage(float* voltage);
     *   \param input_source selection of AD voltage source:
     *       - #DS2438_INPUT_VOLTAGE_VDD for battery input
     *       - #DS2438_INPUT_VAD for VAD pin
-    *   \retval #DS2438_OK if device is present on the bus.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed when reading scratchpad.
+    *   \retval #DS2438_BAD_PARAM if parameter is wrong
     */
 uint8_t DS2438_SelectInputSource(uint8_t input_source);
 
@@ -120,7 +118,7 @@ uint8_t DS2438_SelectInputSource(uint8_t input_source);
     *   \brief Start temperature conversion.
     *
     *   This function starts a new temperature conversion.
-    *   \retval #DS2438_OK if device is present on the bus.
+    *   \retval #DS2438_OP_SUCCESS operation finished successfully
     *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
     */
 uint8_t DS2438_StartTemperatureConversion(void);
@@ -130,9 +128,9 @@ uint8_t DS2438_StartTemperatureConversion(void);
     *
     *   This function checks if temperature conversion is complete
     *   by reading the appropriate bit in the Status/Configuration register.
-    *   \retval #DS2438_OK if device is present on the bus.
+    *   \retval 1 as long as it is busy making a temperature measurement
     *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \retval 0 when the conversion is complete
     */
 uint8_t DS2438_HasTemperatureData(void);
 
@@ -143,9 +141,8 @@ uint8_t DS2438_HasTemperatureData(void);
     *   It is a non-blocking function since it does not wait for the 
     *   completion of the conversion, that must be started prior to calling this function.
     *   \param temperature pointer to variable where voltage data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
+    *   \retval #DS2438_ERROR if operation failed.
     */
 uint8_t DS2438_GetTemperatureData(float* temperature);
 
@@ -156,9 +153,8 @@ uint8_t DS2438_GetTemperatureData(float* temperature);
     *   wait until new temperature data are available, and gets the temperature data from 
     *   the DS2438 in float format.
     *   \param temperature pointer to variable where voltage data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 uint8_t DS2438_ReadTemperature(float* temperature);
 
@@ -167,7 +163,7 @@ uint8_t DS2438_ReadTemperature(float* temperature);
     // ===========================================================
     
     /**
-    *   \brief Read current data in float format.
+    *   \brief Read current data in mA and float format.
     *
     *   This function gets the current data in float format. A positive current
     *   means that the battery is being charged, while a negative current
@@ -175,35 +171,32 @@ uint8_t DS2438_ReadTemperature(float* temperature);
     *   convert the current value from raw to float format, the true value of
     *   the sense resistor must be set in the #DS2348_SENSE_RESISTOR macro.
     *   \param current pointer to variable where voltage data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 		
-uint8_t DS2438_GetCurrentData(float* current);
+uint8_t DS2438_GetCurrentData(float* mA_current);
     /**
     *   \brief Read content of ICA register.
     *
     *   This function gets the current content of the ICA register,
     *   which is a 8-bit value representing the integration of the
     *   voltage across sense resistor over time..
-    *   \param current pointer to variable where voltage data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \param ica pointer to variable where voltage data will be stored.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 		
 uint8_t DS2438_GetICA(uint8_t* ica);
     /**
-    *   \brief Get remaining capacity of the battery.
+    *   \brief Get remaining capacity of the battery in mAh.
     *
     *   This function converts the content of the ICA into
     *   remaining capacity according to the formula:
     *   \f$capacity = \dfrac{ICA}{2048\dotR_{sense}} \f$.
-    *   \param capacity pointer to variable where voltage data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
-    *   \retval #DS2438_CRC_FAIL if CRC check failed.
+    *   \param capacity_mAh pointer to variable where voltage data will be stored in mAh.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 		
 uint8_t DS2438_GetCapacity_mAh(float* capacity_mAh);
@@ -214,11 +207,11 @@ uint8_t DS2438_GetCapacity_mAh(float* capacity_mAh);
     /**
     *   \brief Enable current measurements and ICA.
     *
-    *   If IAD is enabeld, current measurements will be taken at a rate
+    *   If IAD is enabled, current measurements will be taken at a rate
     *   of 36.41 Hz, and the results of the conversion can be retrieved
-    *   using the #DS2438_GetCurrentData().
-    *   \retval #DS2438_OK if no error was generated.
-    *   \retval #DS2438_DEV_NOT_FOUND if no device was found on the bus.
+    *   using the DS2438_GetCurrentData().
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 		
 uint8_t DS2438_EnableIAD(void);
@@ -227,8 +220,8 @@ uint8_t DS2438_EnableIAD(void);
     *
     *   DIsable current conversion and ICA. No current conversion
     *   will be performed by the DS2438.
-    *   \retval #DS2438_OK if no error was generated.
-    *   \retval #DS2438_DEV_NOT_FOUND if no device was found on the bus.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 		
 uint8_t DS2438_DisableIAD(void);
@@ -239,8 +232,8 @@ uint8_t DS2438_DisableIAD(void);
     *   current accumulator are used. These registers store the total
     *   charging/discharging current the battery has encountered in
     *   its lifetime.
-    *   \retval #DS2438_OK if no error was generated.
-    *   \retval #DS2438_DEV_NOT_FOUND if no device was found on the bus.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 		
 uint8_t DS2438_EnableCA(void);
@@ -249,8 +242,8 @@ uint8_t DS2438_EnableCA(void);
     *
     *   Disable current conversion and ICA. No current conversion
     *   will be performed by the DS2438.
-    *   \retval #DS2438_OK if no error was generated.
-    *   \retval #DS2438_DEV_NOT_FOUND if no device was found on the bus.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 		
 uint8_t DS2438_DisableCA(void);
@@ -267,8 +260,8 @@ uint8_t DS2438_DisableCA(void);
     *   and the page to be read.
     *   \param page_number the page to be read.
     *   \param page_data pointer to array where data will be stored.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 uint8_t DS2438_ReadPage(uint8_t page_number, uint8_t* page_data);
 
@@ -280,8 +273,8 @@ uint8_t DS2438_ReadPage(uint8_t page_number, uint8_t* page_data);
     *   to the device in its EEPROM.
     *   \param page_number the page number to be written.
     *   \param page_data the data to be written to the page.
-    *   \retval #DS2438_OK if device is present on the bus.
-    *   \retval #DS2438_DEV_NOT_FOUND if device is not present on the bus.
+    *   \retval #DS2438_ERROR if operation failed.
+    *   \retval #DS2438_OP_SUCCESS if operation finished successfully
     */
 uint8_t DS2438_WritePage(uint8_t page_number, uint8_t * page_data);
 
@@ -294,8 +287,6 @@ uint8_t DS2438_WritePage(uint8_t page_number, uint8_t * page_data);
     *   
     *   This function writes a byte on the 1-Wire
     *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
     *   \param data the byte to be written.
     */		
 void OneWire_WriteByte(int data);
@@ -305,8 +296,6 @@ void OneWire_WriteByte(int data);
     *   
     *   This function writes a single bit on the 1-Wire
     *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
     *   \param bit the bit to be written.
     */
 void OneWire_WriteBit(int bit);
@@ -316,8 +305,7 @@ void OneWire_WriteBit(int bit);
     *   
     *   This function reads a byte on the 1-Wire
     *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
+    *   \param none
     *   \return the byte that was read.
     */
 int OneWire_ReadByte(void);
@@ -327,47 +315,31 @@ int OneWire_ReadByte(void);
     *   
     *   This function reads a single bit on the 1-Wire
     *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
+    *   \param none
     *   \return the bit that was read.
     */
 int OneWire_ReadBit(void);
-/////////////////////////////////////////////////////////////////////////////////////////////////////NOCH NICHT FERTIG
+
     /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
+    *   \brief Initialises the Onewire Port PA0 on the CM3
     *   \param bit the bit to be written.
     */
 void init_OnewirePort(void);
 
-		// ===========================================================
+    // ===========================================================
     //                  WAIT FUNCTIONS
     // ===========================================================
 
     /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
-    *   \param bit the bit to be written.
+    *   \brief waits for 10us times factor
+    *   \param mal the factor by which the 10us are multiplied by
     */
 void wait_10us(int mal);
 
-    /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
-    *   \param bit the bit to be written.
-    */
+/**
+*   \brief waits for 1us times factor
+*   \param mal the factor by which the 1us are multiplied by
+*/
 void wait_us(int mal);
 
     // ===========================================================
@@ -375,58 +347,35 @@ void wait_us(int mal);
     // ===========================================================
 
     /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
-    *   \param bit the bit to be written.
+    *   \brief initialises the UART1 interface with 9600 Baud
     */
 void uart1_init(void);
 
     /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
-    *   \param bit the bit to be written.
+    *   \brief Sends a char over UART
+    *   \param ch char which will be send over UART
     */
 void uart_put_char(char ch);
 
-    /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
-    *   \param bit the bit to be written.
-    */
+/**
+*   \brief Sends a string over UART
+*   \param string pointer to string which will be send over UART
+*/
 void uart_put_string(char *string);
 
     /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
-    *   \param bit the bit to be written.
+    *   \brief Send one page of data over UART
+    *
+    *   This function reads one page of data and sends it over OART
+    *   \param page_number the page to be send.
+    *   \param page_data pointer to array where data will be stored.
     */
 void uart_put_page_content(uint8_t* page_data, uint8_t page_number);
 
-    /**
-    *   \brief Write a bit on 1-Wire interface.
-    *   
-    *   This function writes a single bit on the 1-Wire
-    *   interface.
-    *   \param pin 1-Wire interface pin. This value can be found in the Pin_aliases.h file
-    *       in the Pin folder in the Generated source folder.
-    *   \param bit the bit to be written.
-    */
+/**
+*   \brief Sends a string over UART with newline afterwards
+*   \param string pointer to string which will be send over UART
+*/
 void uart_put_string_newline(char *string);
 
 #endif
